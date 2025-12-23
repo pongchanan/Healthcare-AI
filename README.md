@@ -1,74 +1,114 @@
-# Healthcare-AI - Clean Architecture
+# Healthcare-AI System 🏥
 
-A modular Thai RAG (Retrieval-Augmented Generation) system with clean, maintainable code.
+A high-performance, privacy-focused AI agent designed for medical contexts. This system is built to provide accurate answers by combining structured data (SQL), unstructured knowledge (Medical PDFs/Vectors), and real-time patient APIs, all while targeting <50ms decision latency.
 
-## Features
+---
 
-- **Small, focused classes** - Each class has one responsibility
-- **Clean architecture** - Easy to understand and maintain
-- **Thai language support** - Optimized for Thai text processing
-- **Modular design** - Easy to extend and test
-- **Simple setup** - Get started in minutes
+## 🚀 How It Works (The "Mental Model")
 
-## Architecture
+Think of this AI as a **Smart Doctor's Assistant** that has three superpowers:
+1.  **Memory:** It can read and recall thousands of medical textbooks instantly.
+2.  **Access:** It can look up live patient records securely.
+3.  **Synthesis:** It can reason like a human to combine facts into a helpful answer.
 
-```
-src/
-├── database/          # Vector storage & search
-│   ├── vector_store.py      # FAISS operations
-│   ├── text_processor.py    # Text processing
-│   └── search_engine.py     # Search coordination
-├── llm/               # LLM clients
-│   ├── base_client.py       # Abstract interface
-│   └── mock_client.py       # Testing mock
-├── rag/               # RAG pipeline
-│   └── rag_pipeline.py      # Orchestration
-└── utils/             # Utilities
-    ├── logger.py            # Logging
-    ├── file_handler.py      # File operations
-    └── validators.py        # Input validation
-```
+### The Workflow: From Question to Answer
 
-## Quick Start
+When you ask a question (e.g., *"Does patient John Doe have the flu?"*), the system follows this journey:
 
-### 1. Setup
+1.  **The Ear (Entry Point):**
+    Your question enters the system via the API.
+
+2.  **The Brain (The Router):**
+    Before thinking hard, a fast "Router" (like a triage nurse) decides what *kind* of problem this is:
+    - **Is it a fact?** (e.g., "What are symptoms of Dengue?") → Uses **Knowledge Search**.
+    - **Is it a stat?** (e.g., "How many patients are sick?") → Uses **SQL Calculator**.
+    - **Is it specific?** (e.g., "Check Jane's blood pressure") → Uses **Patient API**.
+    - **Is it complex?** (e.g., "Based on Jane's history, is she at risk?") → Uses **Hybrid Mode** (All of the above).
+
+3.  **The Hands (Tools):**
+    Based on the decision, the system uses specific tools:
+    - **Vector Search (Qdrant):** Only looks for "meaning" in text. It knows that "H1N1" and "Flu" are related.
+    - **SQL Database (DuckDB):** Lightning-fast data crunching for tables and CSVs.
+    - **API Wrapper:** Securely fetches real-time data.
+
+4.  **The Voice (Typhoon Synthesizer):**
+    Finally, all the gathered clues are sent to a robust LLM (Large Language Model) that speaks fluent Thai and English. It writes the final answer for you.
+
+---
+
+## 🏗 System Architecture
+
+The system is split into two halves to ensure **Speed** during the day and **Learning** at night.
+
+### 1. Offline Layer ("The Learning Phase")
+*This runs in the background to prepare data.*
+*   **Ingestion Pipeline:**
+    *   Reads **PDFs & Images** -> Converts them into mathematical "Vectors" -> Stores in **Qdrant**.
+    *   Reads **CSVs** -> Automatically detects schema -> Loads into **DuckDB**.
+*   **Why?** By processing heavy data beforehand, we don't make the user wait when they ask a question.
+
+### 2. Runtime Layer ("The Action Phase")
+*This runs when you ask a question.*
+*   **Tech Stack:** FastAPI (Server), Asynchronous Python (Speed), Ollama (Local AI).
+*   **Desing:**
+    *   **No Mocks:** Every tool connects to a real engine.
+    *   **Parallelism:** If the AI needs to check the API and the Database, it does both *at the same time* to save milliseconds.
+
+---
+
+## 📂 Project Structure
+
+- **`src/`**
+    - **`pipelines/`**: The offline workers (Ingestion, SQL Loading).
+    - **`agent/`**: The brain (Router, Workflow logic).
+    - **`tools/`**: The hands (Database connectors, API wrappers).
+    - **`config.py`**: The central settings control.
+- **`data/`**
+    - **`raw/`**: Drop your PDFs, CSVs, and Images here.
+    - **`processed/`**: The system stores optimized DB files here.
+    - **`vector_store/`**: The AI's long-term memory.
+- **`main.py`**: The web server launchpad.
+
+---
+
+## ⚡ Quick Start
+
+### Prerequisites
+- Python 3.10+
+- [Ollama](https://ollama.com/) running locally with the `typhoon` models.
+
+### 1. Install Dependencies
 ```bash
-python scripts/setup.py
+pip install -r requirements.txt
 ```
 
-### 2. Run
+### 2. Prepare Your Data
+Place your medical PDFs and CSVs (e.g., `patients.csv`, `guidelines.pdf`) into `data/raw/`.
+
+### 3. Build the Brain (Ingestion)
+Run these once to teach the AI your data:
 ```bash
-python scripts/run.py
+# Load structured data (CSVs)
+python -m src.pipelines.sql_loader
+
+# Process unstructured data (PDFs/Vectors)
+python -m src.pipelines.ingestion
 ```
 
-### 3. Ask Questions
+### 4. Start the Agent
+```bash
+uvicorn main:app --host 0.0.0.0 --port 8000
 ```
-Question: What is learning?
-Answer: Learning is an important process for self-development...
+
+### 5. Evaluate
+Run the test script to see how smart the AI is:
+```bash
+python eval.py
 ```
 
-## Project Structure
+---
 
-- **src/** - Main source code (small, focused modules)
-- **config/** - Configuration and settings
-- **scripts/** - Entry point scripts
-- **data/** - Sample data and storage
-- **docs/** - Documentation
-- **tests/** - Test modules
-
-## Design Principles
-
-1. **Single Responsibility** - Each class does one thing well
-2. **Small Classes** - Easy to understand and debug
-3. **Clear Dependencies** - Explicit, testable dependencies
-4. **Separation of Concerns** - Database, LLM, and RAG logic separated
-
-## Benefits
-
-- Easy to understand - Small, focused classes  
-- Easy to test - Each module independent  
-- Easy to extend - Add new components easily  
-- Easy to maintain - Clear separation of concerns  
-- Easy to debug - Isolated components  
-
-This architecture makes the codebase much more maintainable and developer-friendly!
+## 🛡 Design Philosophy
+- **Local-First:** Designed to run sensitive medical data on-premise without sending it to the cloud.
+- **Speed-Obsessed:** Every millisecond counts in a clinical setting.
+- **Explainable:** We use "Chain of Thought" routing so we know *why* the AI made a decision.

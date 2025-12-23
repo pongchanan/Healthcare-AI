@@ -1,0 +1,13 @@
+fastapi
+uvicorn
+duckdb
+asyncio
+cachetools
+pymupdf
+pandas
+httpx
+openai
+pythainlp
+python-dotenv
+qdrant-client
+sentence-transformers
