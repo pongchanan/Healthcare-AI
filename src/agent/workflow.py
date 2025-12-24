@@ -5,6 +5,50 @@ from src.tools.database import query_vector_db, query_sql_db
 from src.agent.router import classify_intent
 from src.config import Config
 
+async def run_fast_qa_pipeline(query: str):
+    """
+    Optimized pipeline for sub-0.5s latency multiple-choice QA.
+    Bypasses router and parallel fetch. Assumes Vector Search is the only need.
+    """
+    # Step 1: Retrieval (FAST)
+    # We skip intent classification and go straight to vector search
+    # Assuming the query is the question itself.
+    context_chunks = await query_vector_db(query)
+    context_text = "\n".join(context_chunks[:2]) # Limit to top 2 chunks for speed
+
+    # Step 2: Synthesis (FAST)
+    # using 1B model with strict single-token prompt
+    prompt = f"""Context: {context_text}
+Question: {query}
+Answer ONLY with the correct Thai letter (ก, ข, ค, or ง). Do not explain.
+Answer:"""
+
+    try:
+        payload = {
+            "model": Config.SYNTHESIZER_MODEL, # 1B Model
+            "prompt": prompt, # Use text completion endpoint or chat with strict prompt
+            "stream": False,
+            "options": {
+                "temperature": 0.0, # Deterministic
+                "num_predict": 5 # Max 5 tokens to prevent rambling
+            }
+        }
+        
+        async with httpx.AsyncClient(timeout=2.0) as client:
+            response = await client.post(f"{Config.OLLAMA_BASE_URL}/api/generate", json=payload)
+            if response.status_code == 200:
+                answer = response.json()['response'].strip()
+                # Post-processing to ensure only ก/ข/ค/ง
+                valid_answers = ["ก", "ข", "ค", "ง"]
+                for ans in valid_answers:
+                    if ans in answer:
+                        return ans
+                return answer # Fallback if it didn't listen
+            else:
+                return "Error"
+    except Exception as e:
+        return f"Error: {e}"
+
 async def run_agent_pipeline(query: str):
     """
     Main execution pipeline.

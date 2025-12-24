@@ -7,7 +7,7 @@ class Config:
     # Runtime Models (Optimized for Speed)
     # Using environment variables or defaults provided in the prompt
     ROUTER_MODEL = os.getenv("ROUTER_MODEL", "scb10x/llama3.2-typhoon2-1b-instruct:latest") # Tiny, fast decision maker
-    SYNTHESIZER_MODEL = os.getenv("SYNTHESIZER_MODEL", "scb10x/llama3.1-typhoon2-8b-instruct:latest") # General knowledge & Thai fluency
+    SYNTHESIZER_MODEL = os.getenv("SYNTHESIZER_MODEL", "scb10x/llama3.2-typhoon2-1b-instruct:latest") # General knowledge & Thai fluency
     
     # Offline Models (Optimized for Accuracy)
     VISION_MODEL = os.getenv("VISION_MODEL", "typhoon-v2-vision") 
