@@ -9,6 +9,10 @@ app = FastAPI()
 class QueryRequest(BaseModel):
     question: str
 
+@app.on_event("startup")
+async def startup_event():
+    print("\n\n🔥 [SYSTEM] API v2.5 - Chat Mode & Nomic Embeddings Loaded 🔥\n\n")
+
 @app.post("/api/ask")
 async def ask_agent(request: QueryRequest):
     start_time = time.time()
