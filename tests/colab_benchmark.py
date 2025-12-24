@@ -45,11 +45,21 @@ def test_question(row):
 def run_benchmark():
     print(f"Loading data from {DATA_PATH}...")
     questions = []
-    with open(DATA_PATH, 'r', encoding='utf-8') as f:
+    with open(DATA_PATH, 'r', encoding='utf-8-sig') as f: # Use utf-8-sig to handle BOM
         reader = csv.DictReader(f)
+        # Verify keys
+        if reader.fieldnames:
+            print(f"DEBUG: CSV Headers: {reader.fieldnames}")
+            
         for row in reader:
-            if row['Answer'].strip(): # Only valid rows
-                questions.append(row)
+            # Flexible key access (case-insensitive or strip whitespace)
+            q_key = next((k for k in row.keys() if k.strip().lower() == 'question'), None)
+            a_key = next((k for k in row.keys() if k.strip().lower() == 'answer'), None)
+            
+            if q_key and a_key and row[a_key].strip():
+                # Normalize row keys
+                clean_row = {'Question': row[q_key], 'Answer': row[a_key]}
+                questions.append(clean_row)
     
     print(f"Found {len(questions)} valid questions. Testing {MAX_QUESTIONS if MAX_QUESTIONS else 'all'}...")
     

@@ -2,7 +2,7 @@ import os
 import glob
 import httpx
 from src.config import Config
-from src.tools.database import qdrant_client
+from qdrant_client import QdrantClient
 from qdrant_client.http import models
 
 import time
@@ -66,9 +66,19 @@ def chunk_mixed_documents():
     dim = len(test_embed)
     print(f" [Offline] Detected embedding dimension: {dim}")
 
+    print(f" [Offline] Detected embedding dimension: {dim}")
+    
+    # Initialize client locally to avoid global file lock
+    qdrant_client = QdrantClient(path=Config.VECTOR_DB_PATH)
+
     collection_name = "medical_docs"
-    if qdrant_client.collection_exists(collection_name):
+    # qdrant_client.recreate_collection is deprecated in some versions, but create_collection works.
+    # Check if exists first
+    try:
+        qdrant_client.get_collection(collection_name)
         qdrant_client.delete_collection(collection_name)
+    except Exception:
+        pass # Collection doesn't exist
     
     qdrant_client.create_collection(
         collection_name=collection_name,
