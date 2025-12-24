@@ -10,21 +10,21 @@ async def run_fast_qa_pipeline(query: str):
     Optimized pipeline for sub-0.5s latency multiple-choice QA.
     Bypasses router and parallel fetch. Assumes Vector Search is the only need.
     """
-    # Step 1: Retrieval (FAST)
-    # We skip intent classification and go straight to vector search
-    # Assuming the query is the question itself.
-    context_chunks = await query_vector_db(query)
-    # context_chunks is a list of dicts: {'score': float, 'payload': {'content': str, ...}}
-    context_text = "\n".join([chunk.get('payload', {}).get('content', '') for chunk in context_chunks[:2]]) # Limit to top 2 chunks for speed
-
-    # Step 2: Synthesis (FAST)
-    # using 1B model with strict single-token prompt
-    prompt = f"""Context: {context_text}
+    try:
+        # Step 1: Retrieval (FAST)
+        # We skip intent classification and go straight to vector search
+        # Assuming the query is the question itself.
+        context_chunks = await query_vector_db(query)
+        # context_chunks is a list of dicts: {'score': float, 'payload': {'content': str, ...}}
+        context_text = "\n".join([chunk.get('payload', {}).get('content', '') for chunk in context_chunks[:2]]) # Limit to top 2 chunks for speed
+    
+        # Step 2: Synthesis (FAST)
+        # using 1B model with strict single-token prompt
+        prompt = f"""Context: {context_text}
 Question: {query}
 Answer ONLY with the correct Thai letter (ก, ข, ค, or ง). Do not explain.
 Answer:"""
 
-    try:
         payload = {
             "model": Config.SYNTHESIZER_MODEL, # 1B Model
             "prompt": prompt, # Use text completion endpoint or chat with strict prompt
@@ -46,9 +46,11 @@ Answer:"""
                         return ans
                 return answer # Fallback if it didn't listen
             else:
-                return "Error"
+                return f"Error: Model returned {response.status_code}"
     except Exception as e:
-        return f"Error: {e}"
+        import traceback
+        traceback.print_exc()
+        return f"Error: {str(e)}"
 
 async def run_agent_pipeline(query: str):
     """
