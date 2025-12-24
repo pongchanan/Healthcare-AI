@@ -1,7 +1,7 @@
 import asyncio
 import httpx
 from src.tools.api_wrapper import fetch_patient_live_data
-from src.tools.database import query_vector_db, query_sql_db
+from src.tools.database import query_vector_db, query_sql_db, hybrid_search, rerank_results
 from src.agent.router import classify_intent
 from src.config import Config
 
@@ -11,12 +11,15 @@ async def run_fast_qa_pipeline(query: str):
     Bypasses router and parallel fetch. Assumes Vector Search is the only need.
     """
     try:
-        # Step 1: Retrieval (FAST)
-        # We skip intent classification and go straight to vector search
-        # Assuming the query is the question itself.
-        context_chunks = await query_vector_db(query)
+        # Step 1: Retrieval (FAST - Hybrid + Rerank)
+        # 1. Hybrid Search (Vector + BM25) -> Top 10
+        context_chunks = await hybrid_search(query, limit=10)
+        
+        # 2. Reranking (Cross-Encoder) -> Top 3
+        context_chunks = await rerank_results(query, context_chunks, top_k=3)
+
         # context_chunks is a list of dicts: {'score': float, 'payload': {'content': str, ...}}
-        context_text = "\n".join([chunk.get('payload', {}).get('content', '') for chunk in context_chunks[:2]]) # Limit to top 2 chunks for speed
+        context_text = "\n".join([chunk.get('payload', {}).get('content', '') for chunk in context_chunks])
     
         # Debug: Print context to see what the model sees
         print(f"\n[Debug] Question: {query}")

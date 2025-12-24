@@ -103,8 +103,10 @@ def chunk_mixed_documents():
             for page in doc:
                 text += page.get_text()
             
-            # Simple chunking
-            chunks = [text[i:i+500] for i in range(0, len(text), 500)]
+            # Optimized chunking: 1000 chars with 200 overlap
+            chunk_size = 1000
+            overlap = 200
+            chunks = [text[i:i+chunk_size] for i in range(0, len(text), chunk_size - overlap)]
             for i, chunk in enumerate(chunks):
                 documents.append({
                     "content": chunk,
@@ -114,10 +116,8 @@ def chunk_mixed_documents():
     except ImportError:
             print(" [Warning] PyMuPDF not found. Skipping PDF content.")
 
-    # Add dummy data if empty to ensure system works
-    if not documents:
-        documents.append({"content": "Patient A has classic flu symptoms.", "source": "synthetic", "id": "1"})
-        documents.append({"content": "Patient B diagnosed with mild hypertension.", "source": "synthetic", "id": "2"})
+    except ImportError:
+            print(" [Warning] PyMuPDF not found. Skipping PDF content.")
 
     counter = 0
 
@@ -146,6 +146,37 @@ def chunk_mixed_documents():
             qdrant_client.upsert(collection_name="medical_docs", points=points)
     
     print(" [Offline] Vector Indexing Complete.")
+
+    # 4. Build BM25 Index (Hybrid Search)
+    print(" [Offline] Building BM25 Index for Hybrid Search...")
+    try:
+        from rank_bm25 import BM25Okapi
+        import pickle
+        from pythainlp.tokenize import word_tokenize
+        
+        # Tokenize all documents
+        tokenized_corpus = []
+        print(f"   - Tokenizing {len(documents)} docs with PyThaiNLP...")
+        for doc in documents:
+            # Tokenize and keep list of strings
+            tokens = word_tokenize(doc['content'], engine="newmm")
+            tokenized_corpus.append(tokens)
+            
+        bm25 = BM25Okapi(tokenized_corpus)
+        
+        # Save BM25 + Documents mapping (we need the docs to map back from BM25 scores)
+        bm25_data = {
+            "bm25": bm25,
+            "documents": documents
+        }
+        
+        with open("data/bm25_data.pkl", "wb") as f:
+            pickle.dump(bm25_data, f)
+            
+        print(" [Offline] BM25 Index Saved to data/bm25_data.pkl")
+        
+    except Exception as e:
+        print(f" [Error] Failed to build BM25: {e}")
 
 if __name__ == "__main__":
     process_images_offline()
