@@ -12,7 +12,6 @@ def get_embedding(text: str):
     try:
         url = f"{Config.OLLAMA_BASE_URL}/api/embeddings"
         payload = {
-        payload = {
             "model": Config.EMBEDDING_MODEL,
             # Note: Instruct models might need a specific prompt or might not support /api/embeddings well if not optimized
             # But normally Ollama handles it.
