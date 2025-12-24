@@ -5,6 +5,8 @@ from src.config import Config
 from src.tools.database import qdrant_client
 from qdrant_client.http import models
 
+import time
+
 # Use Ollama for embeddings to avoid heavy local dependencies
 def get_embedding(text: str):
     try:
@@ -20,12 +22,16 @@ def get_embedding(text: str):
         # Verify if model supports embeddings. If not, we might need to use a specific embedding model if user has one.
         # Given the list: scb10x/llama3.1-typhoon2-8b-instruct
         # We will try it.
-        with httpx.Client(timeout=10.0) as client:
+        start_ts = time.time()
+        # print(f"DEBUG: Requesting embedding for text len {len(text)}...")
+        with httpx.Client(timeout=300.0) as client:
             response = client.post(url, json=payload)
             response.raise_for_status()
-            return response.json().get("embedding")
+            vector = response.json().get("embedding")
+            # print(f"DEBUG: Success in {time.time() - start_ts:.2f}s")
+            return vector
     except Exception as e:
-        print(f" [Embedding Error] {e}")
+        print(f" [Embedding Error] {e} (Duration: {time.time() - start_ts:.2f}s if applicable)")
         return [0.0] * 384 # Fallback dummy if failed, to allow pipeline to continue (though results will be bad)
 
 def process_images_offline():
@@ -60,8 +66,12 @@ def chunk_mixed_documents():
     dim = len(test_embed)
     print(f" [Offline] Detected embedding dimension: {dim}")
 
-    qdrant_client.recreate_collection(
-        collection_name="medical_docs",
+    collection_name = "medical_docs"
+    if qdrant_client.collection_exists(collection_name):
+        qdrant_client.delete_collection(collection_name)
+    
+    qdrant_client.create_collection(
+        collection_name=collection_name,
         vectors_config=models.VectorParams(size=dim, distance=models.Distance.COSINE)
     )
 
@@ -99,6 +109,8 @@ def chunk_mixed_documents():
         documents.append({"content": "Patient A has classic flu symptoms.", "source": "synthetic", "id": "1"})
         documents.append({"content": "Patient B diagnosed with mild hypertension.", "source": "synthetic", "id": "2"})
 
+    counter = 0
+
     # Indexing
     if documents:
         print(f"   - Indexing {len(documents)} chunks...")
@@ -116,6 +128,9 @@ def chunk_mixed_documents():
             if len(points) >= 10:
                 qdrant_client.upsert(collection_name="medical_docs", points=points)
                 points = []
+
+            print(f"   - Indexed {counter} chunks out of {len(documents)}")
+            counter += 1
         
         if points:
             qdrant_client.upsert(collection_name="medical_docs", points=points)
