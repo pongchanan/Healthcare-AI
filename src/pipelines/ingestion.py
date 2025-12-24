@@ -12,7 +12,8 @@ def get_embedding(text: str):
     try:
         url = f"{Config.OLLAMA_BASE_URL}/api/embeddings"
         payload = {
-            "model": Config.SYNTHESIZER_MODEL, # Use the 8b model or 1b if compatible for embeddings
+        payload = {
+            "model": Config.EMBEDDING_MODEL,
             # Note: Instruct models might need a specific prompt or might not support /api/embeddings well if not optimized
             # But normally Ollama handles it.
             # If 8b fails, we can try 1b or hardcode a model name if known.

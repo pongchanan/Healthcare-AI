@@ -8,6 +8,8 @@ class Config:
     # Using environment variables or defaults provided in the prompt
     ROUTER_MODEL = os.getenv("ROUTER_MODEL", "scb10x/llama3.2-typhoon2-1b-instruct:latest") # Tiny, fast decision maker
     SYNTHESIZER_MODEL = os.getenv("SYNTHESIZER_MODEL", "scb10x/llama3.2-typhoon2-1b-instruct:latest") # General knowledge & Thai fluency
+    # Specific model for embeddings (faster & better retrieval than using LLM)
+    EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "nomic-embed-text")
     
     # Offline Models (Optimized for Accuracy)
     VISION_MODEL = os.getenv("VISION_MODEL", "typhoon-v2-vision") 

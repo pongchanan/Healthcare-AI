@@ -42,7 +42,7 @@ async def query_vector_db(query_text: str, collection_name: str = "medical_docs"
         try:
             url = f"{Config.OLLAMA_BASE_URL}/api/embeddings"
             payload = {
-                "model": Config.SYNTHESIZER_MODEL, 
+                "model": Config.EMBEDDING_MODEL, 
                 "prompt": query_text
             }
             async with httpx.AsyncClient(timeout=10.0) as client:
