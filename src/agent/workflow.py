@@ -47,8 +47,8 @@ async def run_fast_qa_pipeline(query: str):
             }
         }
         
-        # Increase timeout slightly to avoid cold-start dropouts
-        async with httpx.AsyncClient(timeout=4.0) as client:
+        # Increase timeout to avoid cold-start dropouts
+        async with httpx.AsyncClient(timeout=10.0) as client:
             response = await client.post(f"{Config.OLLAMA_BASE_URL}/api/chat", json=payload)
             if response.status_code == 200:
                 answer = response.json()['message']['content'].strip()
