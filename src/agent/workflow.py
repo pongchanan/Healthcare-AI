@@ -24,19 +24,26 @@ async def run_fast_qa_pipeline(query: str):
 
         # Step 2: Synthesis (FAST)
         # Using /api/chat for better instruction following with 1B model
-        system_instruction = "Answer ONLY with the correct Thai letter (ก, ข, ค, or ง). Do not explain."
+        # Few-shot prompting to break "C" bias
+        system_instruction = "You are a specialized medical assistant. Select the single correct option (ก, ข, ค, or ง) based strictly on the context."
+        
+        example_user = "Context: Patient has fever.\n\nQuestion: What is the symptom?\nAnswer:"
+        example_assistant = "ก"
+        
         user_content = f"Context: {context_text}\n\nQuestion: {query}\nAnswer:"
 
         payload = {
             "model": Config.SYNTHESIZER_MODEL, # 1B Model
             "messages": [
                 {"role": "system", "content": system_instruction},
+                {"role": "user", "content": example_user},
+                {"role": "assistant", "content": example_assistant},
                 {"role": "user", "content": user_content}
             ],
             "stream": False,
             "options": {
-                "temperature": 0.0, # Deterministic
-                "num_predict": 5 # Max 5 tokens
+                "temperature": 0.1, # Slight temp to allow breaking bias
+                "num_predict": 2 # We only need 1 letter
             }
         }
         
