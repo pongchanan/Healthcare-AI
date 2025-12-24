@@ -2,13 +2,20 @@ import csv
 import time
 import requests
 import statistics
+import argparse
 from concurrent.futures import ThreadPoolExecutor
 
+# Default local, but can be overridden
 API_URL = "http://localhost:8000/api/ask"
 DATA_PATH = "data/raw/QA.csv"
-MAX_QUESTIONS = 50  # Test first 50 for speed, set to None for all
+MAX_QUESTIONS = 50  # Test first 50 for speed
 
-def test_question(row):
+def parse_args():
+    parser = argparse.ArgumentParser(description="Healthcare AI Benchmark")
+    parser.add_argument("--url", type=str, default="http://localhost:8000/api/ask", help="API Endpoint URL")
+    return parser.parse_args()
+
+def test_question(row, url):
     question = row['Question']
     correct_answer = row['Answer'].strip()
     
@@ -18,7 +25,7 @@ def test_question(row):
 
     start_ts = time.time()
     try:
-        response = requests.post(API_URL, json={"question": question}, timeout=10)
+        response = requests.post(url, json={"question": question}, timeout=10)
         latency = (time.time() - start_ts) * 1000
         
         if response.status_code == 200:
@@ -43,6 +50,9 @@ def test_question(row):
         return {"error": str(e)}
 
 def run_benchmark():
+    args = parse_args()
+    target_url = args.url
+    print(f"🚀 Benchmarking against: {target_url}")
     print(f"Loading data from {DATA_PATH}...")
     questions = []
     with open(DATA_PATH, 'r', encoding='utf-8-sig') as f: # Use utf-8-sig to handle BOM
@@ -68,7 +78,7 @@ def run_benchmark():
     
     # Run sequentially to measure true latency (parallel would stress test throughput, not single-req latency)
     for i, q in enumerate(target_questions):
-        res = test_question(q)
+        res = test_question(q, target_url)
         if res and "error" not in res:
             results.append(res)
             status = "✅" if res['correct'] else "❌"

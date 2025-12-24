@@ -14,7 +14,8 @@ async def run_fast_qa_pipeline(query: str):
     # We skip intent classification and go straight to vector search
     # Assuming the query is the question itself.
     context_chunks = await query_vector_db(query)
-    context_text = "\n".join(context_chunks[:2]) # Limit to top 2 chunks for speed
+    # context_chunks is a list of dicts: {'score': float, 'payload': {'content': str, ...}}
+    context_text = "\n".join([chunk.get('payload', {}).get('content', '') for chunk in context_chunks[:2]]) # Limit to top 2 chunks for speed
 
     # Step 2: Synthesis (FAST)
     # using 1B model with strict single-token prompt
