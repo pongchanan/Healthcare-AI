@@ -18,27 +18,35 @@ async def run_fast_qa_pipeline(query: str):
         # context_chunks is a list of dicts: {'score': float, 'payload': {'content': str, ...}}
         context_text = "\n".join([chunk.get('payload', {}).get('content', '') for chunk in context_chunks[:2]]) # Limit to top 2 chunks for speed
     
+        # Debug: Print context to see what the model sees
+        print(f"\n[Debug] Question: {query}")
+        print(f"[Debug] Context Snippet: {context_text[:200]}...")
+
         # Step 2: Synthesis (FAST)
-        # using 1B model with strict single-token prompt
-        prompt = f"""Context: {context_text}
-Question: {query}
-Answer ONLY with the correct Thai letter (ก, ข, ค, or ง). Do not explain.
-Answer:"""
+        # Using /api/chat for better instruction following with 1B model
+        system_instruction = "Answer ONLY with the correct Thai letter (ก, ข, ค, or ง). Do not explain."
+        user_content = f"Context: {context_text}\n\nQuestion: {query}\nAnswer:"
 
         payload = {
             "model": Config.SYNTHESIZER_MODEL, # 1B Model
-            "prompt": prompt, # Use text completion endpoint or chat with strict prompt
+            "messages": [
+                {"role": "system", "content": system_instruction},
+                {"role": "user", "content": user_content}
+            ],
             "stream": False,
             "options": {
                 "temperature": 0.0, # Deterministic
-                "num_predict": 5 # Max 5 tokens to prevent rambling
+                "num_predict": 5 # Max 5 tokens
             }
         }
         
-        async with httpx.AsyncClient(timeout=2.0) as client:
-            response = await client.post(f"{Config.OLLAMA_BASE_URL}/api/generate", json=payload)
+        # Increase timeout slightly to avoid cold-start dropouts
+        async with httpx.AsyncClient(timeout=4.0) as client:
+            response = await client.post(f"{Config.OLLAMA_BASE_URL}/api/chat", json=payload)
             if response.status_code == 200:
-                answer = response.json()['response'].strip()
+                answer = response.json()['message']['content'].strip()
+                print(f"[Debug] Raw Answer: {answer}")
+                
                 # Post-processing to ensure only ก/ข/ค/ง
                 valid_answers = ["ก", "ข", "ค", "ง"]
                 for ans in valid_answers:
