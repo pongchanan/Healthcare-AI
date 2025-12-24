@@ -6,7 +6,8 @@ from qdrant_client.http import models
 
 # Initialize global clients
 # Qdrant client (Local file persistent)
-qdrant_client = QdrantClient(path=Config.VECTOR_DB_PATH)
+# Global clients removed to prevent file lock on import
+# qdrant_client = QdrantClient(path=Config.VECTOR_DB_PATH)
 
 def get_sql_connection():
     return duckdb.connect(Config.SQL_DB_PATH)
@@ -58,7 +59,11 @@ async def query_vector_db(query_text: str, collection_name: str = "medical_docs"
 
         # qdrant-client v1.10+ uses query_points for search in some contexts or if search is deprecated/missing
         # result structure: QueryResponse(points=[ScoredPoint(...), ...])
-        search_result = qdrant_client.query_points(
+        
+        # Initialize client here to avoid file lock on module import
+        client = QdrantClient(path=Config.VECTOR_DB_PATH)
+        
+        search_result = client.query_points(
             collection_name=collection_name,
             query=vector,
             limit=limit
